@@ -365,7 +365,7 @@ for(let i=0;i<60;i++)flakes.push({x:rnd(0,W),y:rnd(0,H),r:rnd(1,2.6),s:rnd(.3,1)
 
 // ---------- 저장 / 프로필 ----------
 const SKEY='snowfight_v1';
-const defSave=()=>({nick:'',coins:0,rec:{ai:[[0,0],[0,0],[0,0]],on:[0,0],v2:[0,0]},tower:{best:0,cp:1,run:null},up:{hp:0,dmg:0,mv:0,luck:0},own:{ch:[],acc:[],trl:[]},eq:{acc:'',trl:''},daily:{last:'',won:'',streak:0},zoom:'auto'});
+const defSave=()=>({nick:'',coins:0,rec:{ai:[[0,0],[0,0],[0,0]],on:[0,0],v2:[0,0]},tower:{best:0,cp:1,run:null},up:{hp:0,dmg:0,mv:0,luck:0},own:{ch:[],acc:[],trl:[]},eq:{acc:'',trl:''},daily:{last:'',won:'',streak:0},view:'near'});
 let save=defSave();
 function loadSave(){
   try{const r=JSON.parse(localStorage.getItem(SKEY)||'null');
@@ -778,7 +778,7 @@ function update(){
   let t;
   if(state==='fly'&&projs.length)t=projs[0].x-W/2;
   else if(state==='after'&&afterT>32&&lastLand)t=lastLand.x-W/2;
-  else if(P.length){const a=P[turn],b=tgt(P[turn]);t=Math.abs(a.x-b.x)<W-170?(a.x+b.x)/2-W/2:P[turn].x-W/2;}
+  else if(P.length){const a=P[turn],b=tgt(P[turn]);t=Math.abs(a.x-b.x)<W-60?(a.x+b.x)/2-W/2:a.x-W/2+(b.x>a.x?1:-1)*W*.22;}
   else t=camX;
   camX+=(cl(t,0,WW-W)-camX)*.1;
 }
@@ -1042,7 +1042,7 @@ function updateUI(){
   $('gFill').style.clipPath='inset(0 '+(100-gp)+'% 0 0)';
   $('gNum').textContent=charging?(cancelCharge?'취소됨 (놓으면 취소)':Math.round(chg)):(human?'꾹 눌러 충전':((t.ai&&state==='aim')?Math.round(t.power):''));
   const gl=$('gLast');if(human&&t.lastPower){gl.style.display='block';gl.style.left=t.lastPower+'%';}else gl.style.display='none';
-  $('mv').textContent=t.moveMax>0?Math.round(t.move/t.moveMax*100)+'%':'불가';
+  $('mv').textContent=t.moveMax>0?Math.round(t.move/t.moveMax*100)+'%':'불가';document.querySelectorAll('[data-k=left],[data-k=right]').forEach(e=>e.classList.toggle('dis',t.moveMax<=0));
   const w=WP[t.wp];$('wpn').textContent=w.icon+' '+w.name+' '+(w.ammo===Infinity?'∞':'×'+t.ammo[t.wp]);
   const sk=$('skill');sk.textContent=t.ch.skill+(t.cd>0?' ('+t.cd+'턴)':'');sk.classList.toggle('dis',t.cd>0);
   $('hint').textContent=human?t.ch.skill+': '+t.ch.sd:'';
@@ -1255,8 +1255,8 @@ function renderShop(){
 }
 $('btnShop').onclick=()=>{clk();renderShop();openSheet('shopSheet');};
 document.querySelectorAll('#shopTabs button').forEach(b=>b.onclick=()=>{shopTab=b.dataset.s;document.querySelectorAll('#shopTabs button').forEach(x=>x.classList.toggle('on',x===b));clk();renderShop();});
-function zoomLbl(){$('zoomBtn').textContent=save.zoom==='near'?'🔍 전체 보기':'🔍 확대';}
-$('zoomBtn').onclick=()=>{save.zoom=save.zoom==='near'?'auto':'near';persist();zoomLbl();fitView();};
+function zoomLbl(){$('zoomBtn').textContent=save.view==='all'?'🔍 확대':'🔍 전체 보기';}
+$('zoomBtn').onclick=()=>{save.view=save.view==='all'?'near':'all';persist();zoomLbl();fitView();};
 zoomLbl();
 $('menuBtn').onclick=()=>{if(state==='menu'||state==='over')return;paused=true;keys={};drag=null;clk();$('pause').classList.remove('hide');};
 $('btnResume').onclick=()=>{clk();paused=false;$('pause').classList.add('hide');};
@@ -1500,7 +1500,7 @@ function renderOn(){
 
 function fitView(){
   const por=window.innerHeight>window.innerWidth*1.1;let nw=720;
-  if(por){nw=390;if(save&&save.zoom!=='near'&&typeof P!=='undefined'&&P.length&&P[turn]){const b=tgt(P[turn]);const need=Math.abs(P[turn].x-b.x)+170;nw=[390,480,560,640,720].find(v=>v>=need)||720;}}
+  if(por){nw=420;if(save&&save.view==='all'&&typeof P!=='undefined'&&P.length&&P[turn]){const b=tgt(P[turn]);const need=Math.abs(P[turn].x-b.x)+110;nw=[420,480,560,640,720].find(v=>v>=need)||720;}}
   if(nw!==W){W=nw;cv.width=W;camX=cl(camX,0,WW-W);}
 }
 addEventListener('resize',fitView);addEventListener('orientationchange',()=>setTimeout(fitView,200));
