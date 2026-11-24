@@ -1281,14 +1281,30 @@ function initSb(){
     });
   }catch(e){sb=null;}
 }
+function isNative(){try{const C=window.Capacitor;return !!(C&&C.isNativePlatform&&C.isNativePlatform());}catch(e){return false;}}
+function setupDeepLink(){
+  if(!isNative()||window.__dl)return;window.__dl=1;
+  try{window.Capacitor.registerPlugin('App').addListener('appUrlOpen',async ev=>{
+    try{window.Capacitor.registerPlugin('Browser').close();}catch(e){}
+    try{
+      const u=String(ev.url||'');const q=new URLSearchParams(u.split('#')[1]||u.split('?')[1]||'');
+      const at=q.get('access_token'),rt=q.get('refresh_token');
+      if(at&&rt&&sb){const r=await sb.auth.setSession({access_token:at,refresh_token:rt});if(r.error)toast('로그인 실패: '+r.error.message);}
+      else if(q.get('error_description'))toast('로그인 실패: '+q.get('error_description'));
+    }catch(e){toast('로그인 처리 오류');}
+  });}catch(e){}
+}
+setupDeepLink();
 async function loginKakao(){
   if(!sb){toast('온라인 기능을 불러오지 못했어요. 인터넷을 확인해 주세요');return;}
   try{
     const rc=$('refIn')?$('refIn').value.trim().replace(/[^A-Za-z0-9]/g,''):'';
     if(rc)localStorage.setItem('sf_ref',rc.slice(0,12));
   }catch(e){}
-  const {error}=await sb.auth.signInWithOAuth({provider:'kakao',options:{redirectTo:location.origin+location.pathname,scopes:'profile_nickname'}});
-  if(error)toast('로그인 실패: '+error.message);
+  const nat=isNative();
+  const {data,error}=await sb.auth.signInWithOAuth({provider:'kakao',options:{redirectTo:nat?'kr.ddakal.snowfight://login':location.origin+location.pathname,scopes:'profile_nickname',skipBrowserRedirect:nat}});
+  if(error){toast('로그인 실패: '+error.message);return;}
+  if(nat&&data&&data.url){try{await window.Capacitor.registerPlugin('Browser').open({url:data.url});}catch(e){location.href=data.url;}}
 }
 async function logout(){try{await sb.auth.signOut();}catch(e){}authUser=null;acct=null;renderAcct();refreshMenu();toast('로그아웃했어요');}
 async function loadAcct(){
