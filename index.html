@@ -23,6 +23,8 @@ canvas{width:100%;display:block;background:#0b1430;touch-action:none;user-select
 #wind small{display:block;font-size:11px;opacity:.75}
 #windArr{font-size:15px;font-weight:800;color:#9be7ff;white-space:nowrap}
 #timer{font-size:11px;opacity:.85}
+#zoomBtn{display:none;position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.4);color:#fff;border:0;border-radius:10px;padding:6px 12px;font-size:14px}
+@media (orientation:portrait){#zoomBtn{display:block}}
 #menuBtn{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.4);color:#fff;border:0;border-radius:10px;padding:6px 12px;font-size:14px}
 #ctrl{flex:none;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:6px 10px 10px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;min-height:0}
 #ctrl.off{opacity:.35;pointer-events:none}
@@ -191,6 +193,7 @@ canvas{width:100%;display:block;background:#0b1430;touch-action:none;user-select
       <div id="wind"><small id="mapName">-</small><div id="windArr">-</div><div id="timer"></div></div>
       <div class="hp r"><div class="nm" id="nmR">-</div><div class="bar"><i id="hpR"></i></div></div>
     </div>
+    <button id="zoomBtn">🔍 확대</button>
     <button id="menuBtn">⏸ 일시정지</button>
     <div id="banner"><span id="bannerTxt"></span></div>
   </div>
@@ -362,7 +365,7 @@ for(let i=0;i<60;i++)flakes.push({x:rnd(0,W),y:rnd(0,H),r:rnd(1,2.6),s:rnd(.3,1)
 
 // ---------- 저장 / 프로필 ----------
 const SKEY='snowfight_v1';
-const defSave=()=>({nick:'',coins:0,rec:{ai:[[0,0],[0,0],[0,0]],on:[0,0],v2:[0,0]},tower:{best:0,cp:1,run:null},up:{hp:0,dmg:0,mv:0,luck:0},own:{ch:[],acc:[],trl:[]},eq:{acc:'',trl:''},daily:{last:'',won:'',streak:0}});
+const defSave=()=>({nick:'',coins:0,rec:{ai:[[0,0],[0,0],[0,0]],on:[0,0],v2:[0,0]},tower:{best:0,cp:1,run:null},up:{hp:0,dmg:0,mv:0,luck:0},own:{ch:[],acc:[],trl:[]},eq:{acc:'',trl:''},daily:{last:'',won:'',streak:0},zoom:'auto'});
 let save=defSave();
 function loadSave(){
   try{const r=JSON.parse(localStorage.getItem(SKEY)||'null');
@@ -472,7 +475,7 @@ function newGame(m){
   }
   turn=0;wind=rw();state='aim';stats={t:0,d:[0,0,0,0]};projs=[];parts=[];texts=[];rings=[];ai=null;winner=-1;drag=null;paused=false;
   if(m==='daily'&&dInfo.mod===1)wind=(Math.random()<.5?-1:1)*Math.round(rnd(5,8));
-  aimT=45*60;camX=cl((SP0+SP1)/2-W/2,0,WW-W);camFocus=null;
+  fitView();aimT=45*60;camX=cl((SP0+SP1)/2-W/2,0,WW-W);camFocus=null;
   say(m==='2v2'?'2:2 팀전 시작!':m==='tower'?(run.floor%10===0?run.floor+'층 보스!':run.floor+'층 시작'):m==='daily'?DMODS[dInfo.mod]:P[0].ch.name+' 차례');
   $('menu').classList.add('hide');$('over').classList.add('hide');$('pause').classList.add('hide');$('load').classList.add('hide');closeSheets();
   $('mapName').textContent=MAP.name.replace(/^\S+\s/,'')+(m==='2v2'?' · 2:2':tag)+((MAP.grav||1)!==1?' · 중력 '+MAP.grav+'x':'');
@@ -676,7 +679,7 @@ function checkEnd(){
   if(p.shots>1){p.shots--;state='aim';aimT=45*60;ai=null;say('한 발 더!');return;}
   p.shots=0;p.buff.multi=0;
   turn=nextIdx();wind=(mode==='daily'&&dInfo&&dInfo.mod===1)?(Math.random()<.5?-1:1)*Math.round(rnd(5,8)):rw();
-  const n=P[turn];n.move=n.moveMax;if(n.cd>0)n.cd--;n.buff.armor=0;n.buff.refl=0;
+  const n=P[turn];n.move=n.moveMax;fitView();if(n.cd>0)n.cd--;n.buff.armor=0;n.buff.refl=0;
   ai=null;state='aim';aimT=45*60;
   if(n.burn>0){n.burn--;n.hp=Math.max(0,n.hp-4);n.hit=20;texts.push({x:n.x,y:n.y-60,t:'-4 🔥',l:55,crit:0});if(n.hp<=0){state='after';afterT=40;return;}}
   say((n.nick||n.ch.name)+' 차례');
@@ -993,6 +996,10 @@ function render(){
   }
   ctx.restore();
   ctx.restore();
+  P.forEach(q=>{if(q.hp<=0)return;const L=q.x<camX,R=q.x>camX+W;if(!L&&!R)return;
+    const mine=q===P[turn];const x=L?24:W-24,y=H-70;ctx.save();ctx.globalAlpha=.92;ctx.fillStyle=mine?'rgba(255,200,60,.9)':'rgba(255,90,90,.92)';
+    ctx.beginPath();ctx.arc(x,y,20,0,6.3);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(L?'◀':'▶',x,y-1);ctx.font='bold 12px sans-serif';ctx.fillStyle='#000';ctx.fillText(Math.round(Math.abs(q.x-(L?camX:camX+W))/10)+'m',x,y+30);ctx.restore();});
   // 화면 고정 오버레이
   if(drag&&humanAim()){
     ctx.strokeStyle='rgba(255,224,102,.9)';ctx.lineWidth=3;ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(drag.sx,drag.sy);ctx.lineTo(drag.cx,drag.cy);ctx.stroke();
@@ -1248,6 +1255,9 @@ function renderShop(){
 }
 $('btnShop').onclick=()=>{clk();renderShop();openSheet('shopSheet');};
 document.querySelectorAll('#shopTabs button').forEach(b=>b.onclick=()=>{shopTab=b.dataset.s;document.querySelectorAll('#shopTabs button').forEach(x=>x.classList.toggle('on',x===b));clk();renderShop();});
+function zoomLbl(){$('zoomBtn').textContent=save.zoom==='near'?'🔍 전체 보기':'🔍 확대';}
+$('zoomBtn').onclick=()=>{save.zoom=save.zoom==='near'?'auto':'near';persist();zoomLbl();fitView();};
+zoomLbl();
 $('menuBtn').onclick=()=>{if(state==='menu'||state==='over')return;paused=true;keys={};drag=null;clk();$('pause').classList.remove('hide');};
 $('btnResume').onclick=()=>{clk();paused=false;$('pause').classList.add('hide');};
 $('btnQuit').onclick=()=>{clk();netLeave();paused=false;state='menu';run=null;$('pause').classList.add('hide');$('menu').classList.remove('hide');refreshPreview();};
@@ -1489,12 +1499,13 @@ function renderOn(){
 }
 
 function fitView(){
-  const por=window.innerHeight>window.innerWidth*1.1,nw=por?390:720;
+  const por=window.innerHeight>window.innerWidth*1.1;let nw=720;
+  if(por){nw=390;if(save&&save.zoom!=='near'&&typeof P!=='undefined'&&P.length&&P[turn]){const b=tgt(P[turn]);const need=Math.abs(P[turn].x-b.x)+170;nw=[390,480,560,640,720].find(v=>v>=need)||720;}}
   if(nw!==W){W=nw;cv.width=W;camX=cl(camX,0,WW-W);}
 }
 addEventListener('resize',fitView);addEventListener('orientationchange',()=>setTimeout(fitView,200));
 fitView();
-loadSave();
+loadSave();zoomLbl();fitView();
 initSb();renderAcct();
 genMap();
 window.__skip=()=>{loadReady=true;enterMenu();};
