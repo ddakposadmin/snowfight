@@ -1255,8 +1255,10 @@ function renderShop(){
 }
 $('btnShop').onclick=()=>{clk();renderShop();openSheet('shopSheet');};
 document.querySelectorAll('#shopTabs button').forEach(b=>b.onclick=()=>{shopTab=b.dataset.s;document.querySelectorAll('#shopTabs button').forEach(x=>x.classList.toggle('on',x===b));clk();renderShop();});
-function zoomLbl(){$('zoomBtn').textContent=save.view==='all'?'🔍 확대':'🔍 전체 보기';}
-$('zoomBtn').onclick=()=>{save.view=save.view==='all'?'near':'all';persist();zoomLbl();fitView();};
+const VW=[420,720,960,1200],VN=['가까이','보통','멀리','전체'];
+function viewIdx(){const v=save&&save.view;if(v==='all')return 3;if(typeof v==='number'&&v>=0&&v<VW.length)return v;return 0;}
+function zoomLbl(){$('zoomBtn').textContent='🔍 '+VN[viewIdx()]+' ▸';}
+$('zoomBtn').onclick=()=>{save.view=(viewIdx()+1)%VW.length;persist();zoomLbl();fitView();toast('시야: '+VN[viewIdx()]);};
 zoomLbl();
 $('menuBtn').onclick=()=>{if(state==='menu'||state==='over')return;paused=true;keys={};drag=null;clk();$('pause').classList.remove('hide');};
 $('btnResume').onclick=()=>{clk();paused=false;$('pause').classList.add('hide');};
@@ -1516,7 +1518,7 @@ function renderOn(){
 
 function fitView(){
   const por=window.innerHeight>window.innerWidth*1.1;let nw=720;
-  if(por){nw=420;if(save&&save.view==='all'&&typeof P!=='undefined'&&P.length&&P[turn]){const b=tgt(P[turn]);const need=Math.abs(P[turn].x-b.x)+110;nw=[420,480,560,640,720].find(v=>v>=need)||720;}}
+  if(por)nw=VW[viewIdx()];
   if(nw!==W){W=nw;cv.width=W;camX=cl(camX,0,WW-W);}
 }
 addEventListener('resize',fitView);addEventListener('orientationchange',()=>setTimeout(fitView,200));
