@@ -31,21 +31,31 @@ jobs:
       - name: Restore signing key
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: debug-keystore-v1
+          path: ~/ci-keystore/snowfight.keystore
+          key: snowfight-keystore-v2
       - name: Create signing key if missing
         run: |
-          mkdir -p ~/.android
-          if [ ! -f ~/.android/debug.keystore ]; then
-            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Snowfight, O=DDAGAL SOLUTION, C=KR"
-            echo "새 서명 키 생성"
-          else echo "저장된 서명 키 사용"; fi
+          mkdir -p ~/ci-keystore
+          if [ ! -f ~/ci-keystore/snowfight.keystore ]; then
+            keytool -genkeypair -keystore ~/ci-keystore/snowfight.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Snowfight, O=DDAGAL SOLUTION, C=KR"
+            echo "NEW KEY"
+          else echo "CACHED KEY"; fi
+          keytool -list -keystore ~/ci-keystore/snowfight.keystore -storepass android | tail -2
       - name: Icons and version
         run: |
           pip install pillow
           python3 mkicons.py android/app/src/main/res
           sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
-          grep -n versionCode android/app/build.gradle
+          python3 - <<'PY'
+          import os
+          p='android/app/build.gradle'
+          t=open(p).read()
+          k=os.path.expanduser('~/ci-keystore/snowfight.keystore')
+          blk="android {\n    signingConfigs {\n        debug {\n            storeFile file('"+k+"')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n    }\n"
+          t=t.replace("android {\n",blk,1)
+          open(p,'w').write(t)
+          PY
+          grep -n "versionCode\|storeFile" android/app/build.gradle
       - run: npx cap sync android
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - run: cp android/app/build/outputs/apk/debug/app-debug.apk snowfight.apk
