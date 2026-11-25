@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['index.html','capacitor.config.json','package.json','.github/workflows/apk.yml']
+    paths: ['index.html','capacitor.config.json','package.json','.github/workflows/apk.yml','mkicons.py']
 permissions:
   contents: write
 jobs:
@@ -28,6 +28,24 @@ jobs:
           s=s.replace('</activity>',f+'</activity>',1)
           open(p,'w').write(s)
           PY
+      - name: Restore signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: debug-keystore-v1
+      - name: Create signing key if missing
+        run: |
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Snowfight, O=DDAGAL SOLUTION, C=KR"
+            echo "새 서명 키 생성"
+          else echo "저장된 서명 키 사용"; fi
+      - name: Icons and version
+        run: |
+          pip install pillow
+          python3 mkicons.py android/app/src/main/res
+          sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          grep -n versionCode android/app/build.gradle
       - run: npx cap sync android
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - run: cp android/app/build/outputs/apk/debug/app-debug.apk snowfight.apk
